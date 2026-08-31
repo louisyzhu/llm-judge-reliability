@@ -12,6 +12,7 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import FancyBboxPatch, Rectangle
 
 from sweeps import ll_estimand_control
+from estimators import phi_lambda
 
 K = 10
 INK, MUTE = "#1b1e23", "#6c727c"
@@ -156,24 +157,31 @@ def figure2(path="figure2.pdf"):
 def figure3(path="figure3.pdf", ca=None, phi=None):
     """Phi(lambda) against accuracy, and the two Livingston-Lewis estimands."""
     cuts = np.array([4, 5, 6, 7])
+    # computed from the released bank so the figure cannot drift from the code
+    G, J = load_bank()
+    gt, jt = G.sum(1), J.sum(1)
     if ca is None:
-        ca = np.array([0.961, 0.928, 0.900, 0.917])
+        ca = np.array([float(np.mean((jt >= c) == (gt >= c))) for c in cuts])
     if phi is None:
-        phi = np.array([0.742, 0.602, 0.519, 0.610])
+        phi = np.array([phi_lambda(J, c) for c in cuts])
     ctrl = ll_estimand_control()
     own = np.array([ctrl[c]["vs_own_true"] for c in cuts])
     gold = np.array([ctrl[c]["vs_gold"] for c in cuts])
-    fig, (p1, p2) = plt.subplots(1, 2, figsize=(5.5, 2.05), gridspec_kw=dict(wspace=0.34))
-    w = 0.34
+    fig, (p1, p2) = plt.subplots(1, 2, figsize=(5.5, 2.05),
+                                 gridspec_kw=dict(wspace=0.34, width_ratios=[1.12, 1.0]))
+    w = 0.26
     p1.bar(cuts - w/2, ca, w, color=BLUE, label="classification accuracy",
            edgecolor="white", lw=0.5)
     p1.bar(cuts + w/2, phi, w, color=PLUM, label=r"$\Phi(\lambda)$",
            edgecolor="white", lw=0.5)
     for c_, x_, y_ in zip(cuts, ca, phi):
-        p1.annotate("", xy=(c_ + w/2, y_ + 0.010), xytext=(c_ + w/2, x_ - 0.010),
+        # arrow and label centred in the gap between this group and the next
+        xa = c_ + 0.5
+        p1.annotate("", xy=(xa, y_ + 0.010), xytext=(xa, x_ - 0.010),
                     arrowprops=dict(arrowstyle="<->", lw=0.7, color=INK, shrinkA=0, shrinkB=0))
-        p1.text(c_ + w/2 + 0.09, (x_ + y_)/2, f"{x_-y_:.2f}", fontsize=6.0,
-                va="center", ha="left", color=INK)
+        p1.text(xa, (x_ + y_)/2, f"{x_-y_:.2f}", fontsize=5.6,
+                va="center", ha="center", color=INK,
+                bbox=dict(fc="white", ec="none", pad=0.5))
     p1.set_xticks(cuts); p1.set_xlabel("gate cut score", fontsize=6.8)
     p1.set_ylabel("value", fontsize=6.8)
     p1.set_ylim(0, 1.20); p1.set_xlim(3.4, 7.9); p1.tick_params(labelsize=6)
