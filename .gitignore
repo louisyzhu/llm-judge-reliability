@@ -1,0 +1,4 @@
+__pycache__/
+*.pyc
+sweeps_output.json
+.DS_Store
